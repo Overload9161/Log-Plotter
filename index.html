@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html class="dark-mode">
+
+  <head>
+    <script src="plotly-2.4.2.min.js"></script>
+    <script src="LogName.json"></script>
+    <script src="data.json"></script>
+    <link href="styles.css" rel="stylesheet" type="text/css">
+  </head>
+
+  <body>
+    <!-- This is the main body-->
+    <input type="file" id="input-file"><br>
+    <label for="Encoders-Check">Encoders</label>
+    <input type="checkbox" id="Encoders-Check" name="Encoders" onClick="checkClick('Encoders')" checked>
+    <label for="Gamepad1-Check">Gamepad1</label>
+    <input type="checkbox" id="Gamepad1-Check" name="Gamepad1" onClick="checkClick('Gamepad1')" checked>
+    <label for="Gamepad2-Check">Gamepad2</label>
+    <input type="checkbox" id="Gamepad2-Check" name="Gamepad2" onClick="checkClick('Gamepad2')" checked>
+    <label for="Motors-Check">Motors</label>
+    <input type="checkbox" id="Motors-Check" name="Motors" onClick="checkClick('Motors')" checked>
+    <div id="myDiv"></div>
+    <div id="Encoders-Overview" style="display:block">
+      <div id="Encoders"></div>
+    </div>
+    <div id="Gamepad1-Overview" style="display:block">
+      <div id="Gamepad1-Time"></div>
+      <div id="Gamepad1-XY"></div>
+    </div>
+    <div id="Gamepad2-Overview" style="display:block">
+      <div id="Gamepad2-Time"></div>
+    </div>
+    <div id="Motors-Overview" style="display:block">
+      <div id="Motors-Time"></div>
+    </div>
+  </body>
+
+  <script type="text/javascript">
+
+    function checkClick(name){
+      var checkBox = document.getElementById(name+"-Check");
+      var div = document.getElementById(name+"-Overview");
+
+      if (checkBox.checked == true){
+        div.style.display = "block";
+      } else {
+         div.style.display = "none";
+      }
+    }
+
+  </script>
+
+  <!--
+  * This is for text and graphing
+  -->
+  <script type="text/javascript">
+
+      var fileText;
+
+      document.getElementById('input-file').addEventListener('change', function() {
+        var file = this.files[0];
+
+        var reader = new FileReader();
+        reader.onload = function(progressEvent){
+          // Entire file
+
+          // By lines
+          fileText = this.result.split('\n');
+          //makeGraphs(fileText);
+          logData(fileText);
+        };
+        reader.readAsText(file);
+
+      });
+
+      function logData(text){
+        for(i=0; i<text.length; i++){
+          // Split the name and time:data
+          var s = text[i].split("/");
+          if(s[0].includes("======") || s[0] == '') continue;
+          // Split the name if we can
+          var name = s[0].split("-");
+
+          // Define the time and data variable
+          var time, dta;
+          try{
+            time = s[1].split(":");
+            dta = time[1].split(",");
+          }catch(error){
+            // Oh well
+            console.log(error);
+            console.log(s);
+          }
+
+          if(name.length>1){
+
+            var temp = data[name[0]][name[1]];
+
+            temp.time.push(time[0]);
+
+            if(dta[0] != null){
+              if(dta[0] == " true")
+                dta[0] = 1;
+              else if(dta[0] == " false")
+                dta[0] = 0;
+              temp.datas[0].value.push(dta[0]);
+            }
+
+            if(dta[1] != null){
+              if(dta[1] == "true")
+                dta[1] = 1;
+              else if(dta[1] == "false")
+                dta[1] = 0;
+              temp.datas[1].value.push(dta[1]);
+            }
+
+            if(dta[2] != null){
+              if(dta[2] == "true")
+                dta[2] = 1;
+              else if(dta[2] == "false")
+                dta[2] = 0;
+              temp.datas[2].value.push(dta[2]);
+            }
+
+            if(dta[3] != null){
+              if(dta[3] == "true")
+                dta[3] = 1;
+              else if(dta[3] == "false")
+                dta[3] = 0;
+              temp.datas[3].value.push(dta[3]);
+            }
+
+          }else if(s[0].includes("[")){
+            try{
+              var thing = data.Motors[name[0]];
+              thing.datas[0].value.push(dta[0]);
+              thing.datas[1].value.push(dta[1]);
+              thing.datas[2].value.push(dta[2]);
+            }catch(error){
+              console.log(error);
+            }
+          }
+
+        }
+
+        // makeTime("Gamepad1", data.Gamepad1.LStick);
+        graphByTime("Gamepad1-Time", data.Gamepad1);
+        graphByTime("Gamepad2-Time", data.Gamepad2);
+        graphByTime("Motors-Time", data.Motors);
+        graphXY("Gamepad1-XY", data.Gamepad1.LStick, data.Gamepad1.RStick);
+      }
+
+      function graphByTime(location, name){
+        Plotly.purge(location);
+        var lines = [];
+        var dta = name;
+        for(i=0; i<dta.ammount.length; i++){
+          for(o=0; o<dta[dta.ammount[i]].datas.length; o++){
+            var trace = {
+              x:dta.time,
+              y:dta[dta.ammount[i]].datas[o].value,
+              type:'scatter',
+              name:dta[dta.ammount[i]].name + ":" + dta[dta.ammount[i]].datas[o].name
+            }
+            lines.push(trace);
+          }
+        }
+        var layout = {
+          title: dta.name,
+          plot_bgcolor:"black",
+          paper_bgcolor:"black",
+          font: {
+            color: 'white'
+          }
+        }
+        Plotly.newPlot(location, lines, layout);
+      }
+
+      function graphXY(location, name){
+        Plotly.purge(location);
+
+        var lines = [];
+        var dta   = name;
+        var trace1 = {
+          x:dta.datas[0].value,
+          y:dta.datas[1].value,
+          type:'scatter',
+          name:dta.type
+        };
+        var layout = {
+          title:"XY Graph",
+          plot_bgcolor:"black",
+          paper_bgcolor:"black",
+          font: {
+            color: 'white'
+          }
+        };
+        Plotly.newPlot(location, [trace1], layout);
+      }
+
+      function graphXY(location, name, name2){
+        Plotly.purge(location);
+        var dta   = name;
+        var dta2  = name2;
+        var trace1 = {
+          x:dta.datas[0].value,
+          y:dta.datas[1].value,
+          type:'scatter',
+          name:dta.type
+        };
+        var trace2 = {
+          x:dta2.datas[0].value,
+          y:dta2.datas[1].value,
+          type:'scatter',
+          name:dta2.type
+        };
+        var layout = {
+          title:"XY Graph",
+          plot_bgcolor:"black",
+          paper_bgcolor:"black",
+          font: {
+            color: 'white'
+          }
+        };
+
+        Plotly.newPlot(location, [trace1, trace2], layout);
+
+      }
+
+      function makeTime(location, name){
+        Plotly.purge(location);
+        var lines = [];
+        var dta = name;
+        for(i = 0; i < dta.datas.length; i++){
+          var trace = {
+            x:dta.time,
+            y:dta.datas[i].value,
+            type:'scatter',
+            name:dta.name
+          }
+          lines.push(trace);
+        }
+        Plotly.newPlot(location, lines);
+      }
+
+  </script>
+
+</html>
